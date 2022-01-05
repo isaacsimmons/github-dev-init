@@ -6,7 +6,7 @@ Mission statement
 
 ## Step 1: Download Scripts
 
-    mkdir -p ~/dev-init && curl -L https://github.com/isaacsimmons/github-dev-init/tarball/main | tar xz --strip-components=1 -C ~/dev-init
+    mkdir -p ~/dev-init && curl -SsL git.io/JSSVe | tar xz --strip-components=1 -C ~/dev-init
 
 ## Step 2: Install Deps
 
