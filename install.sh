@@ -3,9 +3,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-CONFIG_DIR=~/.dotfiles
+CONFIG_DIR="${CONFIG_DIR:~/.dotfiles}"
+# rename to dotfiles dir?
 
+# Define some helper functions
 exiterr() {
+  >&2 echo "ERROR: ${1}"
+  exit 1
+}
+
+requireenv() {
+  local VARNAME="${1}"
   >&2 echo "ERROR: ${1}"
   exit 1
 }
@@ -57,11 +65,17 @@ fi
 
 # Load in environment vars, apply defaults as needed
 source "${CONFIG_DIR}/.env"
-DEV_ROOT_DIRECTORY="${DEV_ROOT_DIRECTORY:-/Volumes/dev}"
+REPO_ROOT_DIR="${REPO_ROOT_DIR:-/Volumes/dev}"
 
+# If there's a .dotfiles-links file in your config dir already, ensure that all of those links have been created
+# Note: this is pretty early in the process, so if you have your sshkeys or git config in there, it'll be linked
+#       before we start checking them
+if [ -f "${CONFIG_DIR}/.dotfile-links" ]; then
+  "${SCRIPT_DIR}/make-symlinks.sh" "${CONFIG_DIR}/.dotfile-links"
+fi
 
-# Setup dev root directory
-[ -d "${DEV_ROOT_DIRECTORY}" ] || mkdir -p "${DEV_ROOT_DIRECTORY}"
+# Setup repo root directory
+[ -d "${REPO_ROOT_DIR}" ] || mkdir -p "${REPO_ROOT_DIR}"
 
 # Make sure we have SSH keys setup as expected
 # TODO: actually, I want them to be symlinks into my config directory???
@@ -70,6 +84,7 @@ if [ ! -f ~/.ssh/id_rsa ]; then
   exiterr "No SSH key found"  
 fi
 
+# Setup 
 [ -z "${GIT_DISPLAY_NAME}" ] || echoerr "GIT_DISPLAY_NAME undefined"
 [ -z "${GIT_EMAIL}" ] || echoerr "GIT_EMAIL undefined"
 if [ "$(git config --global --get user.name)" != "${GIT_DISPLAY_NAME}" ]; then
@@ -81,7 +96,14 @@ if [ "$(git config --global --get user.email)" != "${GIT_EMAIL}" ]; then
   git config --global user.email "${GIT_EMAIL}"
 fi
 
+# Ensure GH CLI is setup to use SSH
+if [ "$(gh config get git_protocol)" != "ssh" ]; then
+  echo "Setting gh cli tools to use ssh"
+  gh config set git_protocol ssh
+fi
+
 # Make sure the GH CLI is authenticated
+# TODO: additional github hostnames
 set +e
 gh auth status --hostname github.com &> /dev/null
 GH_AUTH_STATUS="$?"
@@ -93,8 +115,8 @@ else
   echo "GH CLI authenticated"
 fi
 
-# Ensure GH CLI is setup to use SSH
-if [ "$(gh config get git_protocol)" != "ssh" ]; then
-  echo "Setting gh cli tools to use ssh"
-  gh config set git_protocol ssh
-fi
+# Push your SSH key to github(s) if not already present
+
+[ -f "${CONFIG_DIR}/repo-list.txt" ] || cp "${SCRIPT_DIR}/repo-list.txt.template" "${CONFIG_DIR}/repo-list.txt"
+
+# Clone all repos (exiterr if none found)

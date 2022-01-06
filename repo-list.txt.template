@@ -1,0 +1,16 @@
+# Lines (excluding empty or commented out ones) in this file represent repositories to clone into your repos directory
+
+# They have the following format:
+# <github account>/<repository> [fork] [local-dir=<relative path>] [host=<alternate github hostname>]
+
+# If "fork" is present, then the <github account> will be configured as the "upstream" remote and a fork will be
+# created in your own account and set as the "origin". Otherwise, the <github account> will be treated as the "origin"
+# remote. If "host" is specified, an alternate github enterprise host will be used to clone that repository.
+
+# Some examples:
+# myorg/frontend fork
+# myorg/backend fork
+# myorg/RepoName fork local-dir=repo-name
+# facebook/react
+# janedoe/some-repo
+# another-org/another-repo host=github.example.com
