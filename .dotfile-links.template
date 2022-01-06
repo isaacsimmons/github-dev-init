@@ -1,0 +1,7 @@
+# This is an example for a .dotfile-links file
+# If any of these are present in the root of a cloned repository they will be processed
+# Additionally, you can include one in your CONFIG_DIR as well
+
+# Each (non-empty, non-commented-out) line represents a file or folder to be symlinked
+# Each line has the following format:
+# <source> <target> [<default>] [overwrite]
