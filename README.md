@@ -13,7 +13,7 @@ Mission statement
 
 ## Step 1: Download Scripts
 
-    mkdir -p ~/dev-init && curl -SsL git.io/JSSVe | tar xz --strip-components=1 -C ~/dev-init
+    mkdir -p ~/dev-init && curl -SsL git.io/JSSVe | tar xz --strip-components=1 -C $_
 
 ## Step 2: Install Deps
 
