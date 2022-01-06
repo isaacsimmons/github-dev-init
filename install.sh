@@ -59,6 +59,7 @@ fi
 source "${CONFIG_DIR}/.env"
 DEV_ROOT_DIRECTORY="${DEV_ROOT_DIRECTORY:-/Volumes/dev}"
 
+
 # Setup dev root directory
 [ -d "${DEV_ROOT_DIRECTORY}" ] || mkdir -p "${DEV_ROOT_DIRECTORY}"
 
@@ -69,13 +70,15 @@ if [ ! -f ~/.ssh/id_rsa ]; then
   exiterr "No SSH key found"  
 fi
 
+[ -z "${GIT_DISPLAY_NAME}" ] || echoerr "GIT_DISPLAY_NAME undefined"
+[ -z "${GIT_EMAIL}" ] || echoerr "GIT_EMAIL undefined"
 if [ "$(git config --global --get user.name)" != "${GIT_DISPLAY_NAME}" ]; then
   echo "Setting git config user.name"
   git config --global user.name "${GIT_DISPLAY_NAME}"
 fi
-if [ "$(git config --global --get user.email)" != "${SS_EMAIL}" ]; then
+if [ "$(git config --global --get user.email)" != "${GIT_EMAIL}" ]; then
   echo "Setting git config user.email"
-  git config --global user.email "${SS_EMAIL}"
+  git config --global user.email "${GIT_EMAIL}"
 fi
 
 # Make sure the GH CLI is authenticated
@@ -84,6 +87,7 @@ gh auth status --hostname github.com &> /dev/null
 GH_AUTH_STATUS="$?"
 set -e
 if [ "${GH_AUTH_STATUS}" -ne "0" ]; then
+  [ -z "${GITHUB_AUTH_TOKEN}" ] || echoerr "GITHUB_AUTH_TOKEN undefined"
   echo "${GITHUB_AUTH_TOKEN}" | gh auth login --hostname github.com --with-token
 else
   echo "GH CLI authenticated"
