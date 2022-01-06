@@ -7,6 +7,9 @@ exiterr() {
   exit 1
 }
 
+[ "${EUID}" -eq 0 ] && exiterr "Don't run this as root"
+
+# Ensure dependencies are installed
 if [[ "$OSTYPE" == "darwin"* ]]; then
   if command -v brew &> /dev/null; then
     echo "Brew installed"
@@ -16,7 +19,19 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   fi
 fi
 
-# Ensure dependencies are installed
+if command -v git &> /dev/null; then
+  echo "Git installed"
+else
+  echo "Installing git..."
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo apt install git
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    brew install git
+  else
+    exiterr "Unsupported OSTYPE $OSTYPE"
+  fi
+fi
+
 if command -v gh &> /dev/null; then
   echo "GH CLI installed"
 else
@@ -32,3 +47,4 @@ else
     exiterr "Unsupported OSTYPE $OSTYPE"
   fi
 fi
+
