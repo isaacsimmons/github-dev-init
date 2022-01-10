@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # rename to dotfiles dir?
-CONFIG_DIR="${CONFIG_DIR:-$HOME/.dotfiles}"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config/dev-init}"
 CONFIG_FILE="${CONFIG_DIR}/github.env"
 echo "Using config in ${CONFIG_DIR}/"
 
