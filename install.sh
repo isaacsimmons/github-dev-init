@@ -2,10 +2,11 @@
 
 set -euo pipefail
 
+#TODO: apply consistent style guide (Google Shell Styleguide, ShellCheck, etc)
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# rename to dotfiles dir?
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config/dev-init}"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dev-init"
 CONFIG_FILE="${CONFIG_DIR}/github.env"
 echo "Using config in ${CONFIG_DIR}/"
 
@@ -24,24 +25,20 @@ require-env() {
 github-env-name() {
   local host="${1}"
   local suffix="${2}"
-  echo "$( echo "$host" | tr [:lower:] [:upper:] | tr . _ )_$suffix"
+  echo "$( echo "$host" | tr "[:lower:]" "[:upper:]" | tr . _ )_$suffix"
 }
 
 ensure-github-auth() {
   local host="${1}"
 
-#  echo $AUTH_TOKEN_NAME
-#  require-env $AUTH_TOKEN_NAME
-#  echo ${!AUTH_TOKEN_NAME}
-
   set +e
-  gh auth status --hostname $host &> /dev/null
+  gh auth status --hostname "$host" &> /dev/null
   GH_AUTH_STATUS="$?"
   set -e
   if [ "${GH_AUTH_STATUS}" -ne "0" ]; then
-    AUTH_TOKEN_NAME="$( github-env-name $host AUTH_TOKEN )"
-    require-env $AUTH_TOKEN_NAME
-    echo "${!AUTH_TOKEN_NAME}" | gh auth login --hostname $host --with-token
+    AUTH_TOKEN_NAME="$( github-env-name "$host" AUTH_TOKEN )"
+    require-env "$AUTH_TOKEN_NAME"
+    echo "${!AUTH_TOKEN_NAME}" | gh auth login --hostname "$host" --with-token
     echo "GH CLI successfully authenticated with $host"
   fi
 
@@ -57,7 +54,7 @@ ensure-github-auth() {
 }
 
 clone-repo() {
-  local arr_repo_arg=(${1//\// })
+  local arr_repo_arg=("${1//\// }")
   local org_name="${arr_repo_arg[0]}"
   local repo_name="${arr_repo_arg[1]}"
 
@@ -95,7 +92,7 @@ clone-repo() {
     local origin_remote="$(git remote get-url origin)"
     [ "${origin_remote}" = "${origin_url}" ] || exiterr "Origin not confgiured correctly in ${local_dir}"
 
-    if [ ! -z "${upstream_org:-}" ]; then
+    if [ -n "${upstream_org:-}" ]; then
       local upstream_remote="$(git remote get-url upstream)"
       [ "${upstream_remote}" = "${upstream_url}" ] || exiterr "Upstream not confgiured correctly in ${local_dir}"
     fi
@@ -111,6 +108,66 @@ clone-repo() {
 
   cd "${local_dir}"
   # TODO: Now do the symlink stuff
+}
+
+# Needs to be called from within the repository directory
+# Link points to the target
+makesymlink() {
+  # TODO: support for absolute paths for link (so that I can use this to symlink stuff from ~ outside of the repos)
+  local TARGET_ARG="${1}"
+  local LINK_ARG="${2}"
+  local TEMPLATE_FILE="${3:-}"
+
+  ABS_TARGET="${LOCAL_OVERRIDES_DIRECTORY}/${TARGET_ARG}"
+  if [[ "$DIR" = /* || "$DIR" = ~* ]]; then
+    ABS_LINK="${LINK_ARG}"
+  else
+    ABS_LINK="${PWD}/${LINK_ARG}"
+  fi
+
+  echo -n "Linking $ABS_LINK to $ABS_TARGET... "
+
+  if [ -L "${ABS_LINK}" ]; then
+    if [ "$(readlink -- "${ABS_LINK}")" = "${ABS_TARGET}" ]; then
+      echo "already exists"
+    else
+      echo
+      exiterr "${ABS_LINK} exists but links to something else"
+    fi
+  elif [ -f "${ABS_LINK}" ]; then
+    if [ -f "${ABS_TARGET}" ]; then
+      # mv "${}" "${}.bak"
+      # echo "overwriting"
+      exiterr "Regular file already exists at link target"
+    else
+      # Special case when switching from local overrides files to symlinked ones
+      # We'll switch the two files around here
+      mv "${ABS_LINK}" "${ABS_TARGET}"
+      ln -s "${ABS_TARGET}" "${ABS_LINK}"
+      echo "swapping"
+    fi
+  else # link doesn't exist
+    if [ -f "${ABS_TARGET}" ]; then
+      ln -s "${ABS_TARGET}" "${ABS_LINK}"
+      echo "done"
+    elif [ "${TEMPLATE_FILE}" = "empty" ]; then
+      touch "${ABS_TARGET}"
+      ln -s "${ABS_TARGET}" "${ABS_LINK}"
+      echo "done (created empty default)"
+    elif [ -z "${TEMPLATE_FILE}" ]; then
+      if [ -f "${TEMPLATE_FILE}" ]; then
+        cp "${TEMPLATE_FILE}" "${ABS_TARGET}"
+        ln -s "${ABS_TARGET}" "${ABS_LINK}"
+        echo "done (with default)"
+      else
+        echo
+        exiterr "template file (${TEMPLATE_FILE}) not found"
+      fi
+    else
+      echo
+      exiterr "Source file not found"
+    fi
+  fi
 }
 
 [ "${EUID}" -eq 0 ] && exiterr "Don't run this as root"
@@ -173,12 +230,12 @@ REPO_ROOT_DIR="${REPO_ROOT_DIR:-$HOME/code}"
 
 # Make sure we have SSH keys setup as expected
 # TODO: support for ed25519 keys?
-if [ ! -f ${HOME}/.ssh/id_rsa ]; then
+if [ ! -f "${HOME}/.ssh/id_rsa" ]; then
   # create one if missing
   echo "Creating new ssh key"
   ssh-keygen -t rsa -b 4096
 fi
-SSH_PUBKEY="$( cut -d " " -f 2 ${HOME}/.ssh/id_rsa.pub )"
+SSH_PUBKEY="$( cut -d " " -f 2 "${HOME}/.ssh/id_rsa.pub" )"
 
 # Setup 
 require-env GIT_DISPLAY_NAME
@@ -201,7 +258,7 @@ fi
 # Make sure the GH CLI is authenticated with all defined github hosts
 GITHUB_HOSTS="${GITHUB_HOSTS:-GITHUB}"
 for GITHUB_HOST in ${GITHUB_HOSTS//,/$IFS}; do
-  ensure-github-auth $GITHUB_HOST
+  ensure-github-auth "$GITHUB_HOST"
 done
 
 [ -f "${CONFIG_DIR}/repo-list.txt" ] || cp "${SCRIPT_DIR}/repo-list.txt.template" "${CONFIG_DIR}/repo-list.txt"
