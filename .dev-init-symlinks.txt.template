@@ -4,18 +4,21 @@
 
 # Each (non-empty, non-commented-out) line represents a file or folder to be symlinked
 # Each line has the following format:
-# <file> [target=<target>] [template=<template>] [empty]
+# <file> [target=<target>] [template=<template> | empty | optional]
 # File is either a relative path in the current directory or an absolute path elsewhere on the filesystem
-# Template must be a relative path to a template file
-# If "empty" is specified, then an empty file will be created if none is found.
-# If neither template nor empty are specified, then the script will exit if the file doesn't exist
 # If target is specified, it will be the relative path within the config directory to store the file
 # If target is not specified, then a name will be automatically generated based on the relative path to the symlink and the parent directory
-# Note that while file can refer to a directory, you cannot provide "empty" or "template" options in that case
+
+# In the case that the "target" doesn't exist one of the following will be done:
+# 1. If "file" exists, it will be moved there
+# 2. If "empty" is specified, an empty file will be created
+# 3. If "template" is specified, that will be copied
+# 4. If "optional" is specified, the row will be skipped
+# 5. If none of the above are true, the script will print an error and exit
 
 # Examples:
 # .env template=.env.template
 # application/config/flags.php empty target=myrepo-flags.php
-# ~/.ssh target=ssh
-# ~/.gitconfig target=gitconfig
+# ~/.ssh target=.ssh
+# ~/.gitconfig target=.gitconfig
 # ~/.config/composer target=composer-config optional
