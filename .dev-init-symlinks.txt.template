@@ -16,9 +16,11 @@
 # 4. If "optional" is specified, the row will be skipped
 # 5. If none of the above are true, the script will print an error and exit
 
-# Examples:
+# Repo Examples:
 # .env template=.env.template
-# application/config/flags.php empty target=myrepo-flags.php
+# app/config/flags.php empty target=myrepo-flags.php
+
+# Config Dir Examples:
 # ~/.ssh target=.ssh
 # ~/.gitconfig target=.gitconfig
 # ~/.config/composer target=composer-config optional
