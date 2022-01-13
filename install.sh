@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dev-init"
+CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/dev-init"
 CONFIG_FILE="${CONFIG_DIR}/github.env"
 echo "Using config in ${CONFIG_DIR}/"
 
@@ -18,38 +18,38 @@ exiterr() {
 
 require-env() {
   local var_name="${1}"
-  [ -z "${!var_name:-}" ] && exiterr "${CONFIG_FILE} missing required environtment variable: ${var_name}"
+  [[ -z "${!var_name:-}" ]] && exiterr "${CONFIG_FILE} missing required environtment variable: ${var_name}"
   return 0
 }
 
 github-env-name() {
   local host="${1}"
   local suffix="${2}"
-  echo "$( echo "$host" | tr "[:lower:]" "[:upper:]" | tr . _ )_$suffix"
+  echo "$( echo "${host}" | tr "[:lower:]" "[:upper:]" | tr . _ )_${suffix}"
 }
 
 ensure-github-auth() {
   local host="${1}"
 
   set +e
-  gh auth status --hostname "$host" &> /dev/null
+  gh auth status --hostname "${host}" &> /dev/null
   GH_AUTH_STATUS="$?"
   set -e
-  if [ "${GH_AUTH_STATUS}" -ne "0" ]; then
-    AUTH_TOKEN_NAME="$( github-env-name "$host" AUTH_TOKEN )"
-    require-env "$AUTH_TOKEN_NAME"
-    echo "${!AUTH_TOKEN_NAME}" | gh auth login --hostname "$host" --with-token
-    echo "GH CLI successfully authenticated with $host"
+  if [[ "${GH_AUTH_STATUS}" -ne "0" ]]; then
+    AUTH_TOKEN_NAME="$( github-env-name "${host}" AUTH_TOKEN )"
+    require-env "${AUTH_TOKEN_NAME}"
+    echo "${!AUTH_TOKEN_NAME}" | gh auth login --hostname "${host}" --with-token
+    echo "GH CLI successfully authenticated with ${host}"
   fi
 
   # Push your SSH key if not already present
   set +e
-  GH_HOST=$host gh ssh-key list | grep -q "${SSH_PUBKEY}"
+  GH_HOST="${host}" gh ssh-key list | grep -q "${SSH_PUBKEY}"
   SSH_KEY_PRESENT="$?"
   set -e
-  if [ "${SSH_KEY_PRESENT}" -ne "0" ]; then
-    echo "Uploading SSH public key to $host"
-    GH_HOST=$host gh ssh-key add "${HOME}/.ssh/id_rsa.pub" -t "DevInit-$( uname -n )-$( date +"%Y" )"
+  if [[ "${SSH_KEY_PRESENT}" -ne "0" ]]; then
+    echo "Uploading SSH public key to ${host}"
+    GH_HOST="${host}" gh ssh-key add "${HOME}/.ssh/id_rsa.pub" -t "DevInit-$( uname -n )-$( date +"%Y" )"
   fi
 }
 
@@ -78,7 +78,7 @@ clone-repo() {
 
   if [[ "${fork}" == "1" ]]; then
     upstream_org="${origin_org}"
-    local gh_username_env_var="$( github-env-name $gh_host USERNAME )"
+    local gh_username_env_var="$( github-env-name "${gh_host}" USERNAME )"
     origin_org="${!gh_username_env_var}"
   fi
 
@@ -86,15 +86,15 @@ clone-repo() {
   local upstream_url="git@${gh_host}:${upstream_org}/${repo_name}.git"
 
   cd "${REPO_ROOT_DIR}"
-  if [ -d "${local_dir}" ]; then
+  if [[ -d "${local_dir}" ]]; then
     # Ensure that git remotes are set properly
     pushd "${local_dir}" > /dev/null
     local origin_remote="$(git remote get-url origin)"
-    [ "${origin_remote}" = "${origin_url}" ] || exiterr "Origin not confgiured correctly in ${local_dir}"
+    [[ "${origin_remote}" = "${origin_url}" ]] || exiterr "Origin not confgiured correctly in ${local_dir}"
 
-    if [ -n "${upstream_org:-}" ]; then
+    if [[ -n "${upstream_org:-}" ]]; then
       local upstream_remote="$(git remote get-url upstream)"
-      [ "${upstream_remote}" = "${upstream_url}" ] || exiterr "Upstream not confgiured correctly in ${local_dir}"
+      [[ "${upstream_remote}" = "${upstream_url}" ]] || exiterr "Upstream not confgiured correctly in ${local_dir}"
     fi
 
     popd > /dev/null
@@ -113,55 +113,82 @@ clone-repo() {
 # Needs to be called from within the repository directory
 # Link points to the target
 makesymlink() {
-  # TODO: support for absolute paths for link (so that I can use this to symlink stuff from ~ outside of the repos)
-  local TARGET_ARG="${1}"
-  local LINK_ARG="${2}"
-  local TEMPLATE_FILE="${3:-}"
+  local symlink_arg="${1}"
 
-  ABS_TARGET="${LOCAL_OVERRIDES_DIRECTORY}/${TARGET_ARG}"
-  if [[ "$DIR" = /* || "$DIR" = ~* ]]; then
-    ABS_LINK="${LINK_ARG}"
+  local symlink_abs_path=""
+  local default_target_prefix=""
+  if [[ "${symlink_arg}" = /* ]]; then
+    symlink_abs_path="${symlink_arg}"
+    default_target_prefix="$( basename "${symlink_arg}" )"
+  elif [[ "${symlink_arg}" = ~* ]]; then
+    symlink_abs_path="${HOME}${symlink_arg:1}"
+    default_target_prefix="home"
   else
-    ABS_LINK="${PWD}/${LINK_ARG}"
+    symlink_abs_path="${PWD}/${symlink_arg}"
+    defalut_target_prefix="$( basename "${PWD}" )"
   fi
 
-  echo -n "Linking $ABS_LINK to $ABS_TARGET... "
+  local target_rel_path=""
+  local =""
+  local create_empty="0"
+  local is_optional="0"
 
-  if [ -L "${ABS_LINK}" ]; then
-    if [ "$(readlink -- "${ABS_LINK}")" = "${ABS_TARGET}" ]; then
+  for extra_arg in "${@:2}"; do
+    if [[ "${extra_arg}" == "template="* ]]; then
+      local_dir="${extra_arg:9}"
+    elif [[ "${extra_arg}" == "target="* ]]; then
+      target_rel_path="${extra_arg:7}"
+    elif [[ "${extra_arg}" == "optional" ]]; then
+      is_optional="1"
+    elif [[ "${extra_arg}" == "empty" ]]; then
+      create_empty="1"
+    else
+      exiterr "Unknown parameter for clone-repo: ${extra_arg}"
+    fi
+  done
+
+  if target_rel_path is empty; then
+    generate an automatic target_re_path based on default_target_prefix and symlink_arg
+  fi
+  local target_abs_path="${LOCAL_OVERRIDES_DIRECTORY}/${target_rel_path}"
+
+  echo -n "Linking ${symlink_abs_path} to ${target_abs_path}... "
+
+  if [[ -L "${symlink_abs_path}" ]]; then
+    if [[ "$(readlink -- "${symlink_abs_path}")" = "${ABS_TARGET}" ]]; then
       echo "already exists"
     else
       echo
-      exiterr "${ABS_LINK} exists but links to something else"
+      exiterr "${symlink_abs_path} exists but links to something else"
     fi
-  elif [ -f "${ABS_LINK}" ]; then
-    if [ -f "${ABS_TARGET}" ]; then
+  elif [[ -f "${symlink_abs_path}" ]]; then
+    if [[ -f "${target_abs_path}" ]]; then
       # mv "${}" "${}.bak"
       # echo "overwriting"
       exiterr "Regular file already exists at link target"
     else
       # Special case when switching from local overrides files to symlinked ones
       # We'll switch the two files around here
-      mv "${ABS_LINK}" "${ABS_TARGET}"
-      ln -s "${ABS_TARGET}" "${ABS_LINK}"
+      mv "${symlink_abs_path}" "${target_abs_path}"
+      ln -s "${target_abs_path}" "${symlink_abs_path}"
       echo "swapping"
     fi
   else # link doesn't exist
-    if [ -f "${ABS_TARGET}" ]; then
-      ln -s "${ABS_TARGET}" "${ABS_LINK}"
+    if [[ -f "${target_abs_path}" ]]; then
+      ln -s "${target_abs_path}" "${symlink_abs_path}"
       echo "done"
-    elif [ "${TEMPLATE_FILE}" = "empty" ]; then
-      touch "${ABS_TARGET}"
-      ln -s "${ABS_TARGET}" "${ABS_LINK}"
+    elif [[ "${create_empty}" = "1" ]]; then
+      touch "${target_abs_path}"
+      ln -s "${target_abs_path}" "${symlink_abs_path}"
       echo "done (created empty default)"
-    elif [ -z "${TEMPLATE_FILE}" ]; then
-      if [ -f "${TEMPLATE_FILE}" ]; then
-        cp "${TEMPLATE_FILE}" "${ABS_TARGET}"
-        ln -s "${ABS_TARGET}" "${ABS_LINK}"
+    elif [[ -z "${template_abs_path}" ]]; then
+      if [[ -f "${template_abs_path}" ]]; then
+        cp "${template_abs_path}" "${target_abs_path}"
+        ln -s "${target_abs_path}" "${symlink_abs_path}"
         echo "done (with default)"
       else
         echo
-        exiterr "template file (${TEMPLATE_FILE}) not found"
+        exiterr "template file (${template_abs_path}) not found"
       fi
     else
       echo
@@ -170,10 +197,10 @@ makesymlink() {
   fi
 }
 
-[ "${EUID}" -eq 0 ] && exiterr "Don't run this as root"
+[[ "${EUID}" -eq 0 ]] && exiterr "Don't run this as root"
 
 # Ensure dependencies are installed
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if [[ "${OSTYPE}" == "darwin"* ]]; then
   if command -v brew &> /dev/null; then
     echo "Brew installed"
   else
@@ -186,12 +213,12 @@ if command -v git &> /dev/null; then
   echo "Git installed"
 else
   echo "Installing git..."
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
     sudo apt install git
-  elif [[ "$OSTYPE" == "darwin"* ]]; then
+  elif [[ "${OSTYPE}" == "darwin"* ]]; then
     brew install git
   else
-    exiterr "Unsupported OSTYPE $OSTYPE"
+    exiterr "Unsupported OSTYPE ${OSTYPE}"
   fi
 fi
 
@@ -199,38 +226,38 @@ if command -v gh &> /dev/null; then
   echo "GH CLI installed"
 else
   echo "Intstalling GH CLI tools..."
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
     sudo apt update
     sudo apt install gh
-  elif [[ "$OSTYPE" == "darwin"* ]]; then
+  elif [[ "${OSTYPE}" == "darwin"* ]]; then
     brew install gh
   else
-    exiterr "Unsupported OSTYPE $OSTYPE"
+    exiterr "Unsupported OSTYPE ${OSTYPE}"
   fi
 fi
 
 # Setup config dir and copy config template if missing
-[ -d "${CONFIG_DIR}" ] || mkdir -p "${CONFIG_DIR}"
-[ -f "${CONFIG_FILE}" ] || cp "${SCRIPT_DIR}/github.env.template" "${CONFIG_FILE}"
+[[ -d "${CONFIG_DIR}" ]] || mkdir -p "${CONFIG_DIR}"
+[[ -f "${CONFIG_FILE}" ]] || cp "${SCRIPT_DIR}/github.env.template" "${CONFIG_FILE}"
 
 # Load in environment vars from config
 source "${CONFIG_FILE}"
 
 # If there's a .dotfiles-links file in your config dir already, ensure that all of those links have been created
 # Note: this is early in the process, so if there are ssh keys or git config in there, it'll be linked first
-if [ -f "${CONFIG_DIR}/.dotfile-links" ]; then
+if [[ -f "${CONFIG_DIR}/.dotfile-links" ]]; then
   "${SCRIPT_DIR}/make-symlinks.sh" "${CONFIG_DIR}/.dotfile-links"
 fi
 
 # Setup repo root directory
-REPO_ROOT_DIR="${REPO_ROOT_DIR:-$HOME/code}"
-[ -d "${REPO_ROOT_DIR}" ] || mkdir -p "${REPO_ROOT_DIR}"
+REPO_ROOT_DIR="${REPO_ROOT_DIR:-${HOME}/code}"
+[[ -d "${REPO_ROOT_DIR}" ]] || mkdir -p "${REPO_ROOT_DIR}"
 
 # Make sure we have SSH keys setup as expected
 # TODO: support for ed25519 keys?
-if [ ! -f "${HOME}/.ssh/id_rsa" ]; then
+if [[ ! -f "${HOME}/.ssh/id_rsa" ]]; then
   # create one if missing
   echo "Creating new ssh key"
   ssh-keygen -t rsa -b 4096
@@ -240,17 +267,17 @@ SSH_PUBKEY="$( cut -d " " -f 2 "${HOME}/.ssh/id_rsa.pub" )"
 # Setup 
 require-env GIT_DISPLAY_NAME
 require-env GIT_EMAIL
-if [ "$(git config --global --get user.name)" != "${GIT_DISPLAY_NAME}" ]; then
+if [[ "$(git config --global --get user.name)" != "${GIT_DISPLAY_NAME}" ]]; then
   echo "Setting git config user.name"
   git config --global user.name "${GIT_DISPLAY_NAME}"
 fi
-if [ "$(git config --global --get user.email)" != "${GIT_EMAIL}" ]; then
+if [[ "$(git config --global --get user.email)" != "${GIT_EMAIL}" ]]; then
   echo "Setting git config user.email"
   git config --global user.email "${GIT_EMAIL}"
 fi
 
 # Ensure GH CLI is setup to use SSH
-if [ "$(gh config get git_protocol)" != "ssh" ]; then
+if [[ "$(gh config get git_protocol)" != "ssh" ]]; then
   echo "Setting gh cli tools to use ssh"
   gh config set git_protocol ssh
 fi
@@ -258,14 +285,14 @@ fi
 # Make sure the GH CLI is authenticated with all defined github hosts
 GITHUB_HOSTS="${GITHUB_HOSTS:-GITHUB}"
 for GITHUB_HOST in ${GITHUB_HOSTS//,/$IFS}; do
-  ensure-github-auth "$GITHUB_HOST"
+  ensure-github-auth "${GITHUB_HOST}"
 done
 
-[ -f "${CONFIG_DIR}/repo-list.txt" ] || cp "${SCRIPT_DIR}/repo-list.txt.template" "${CONFIG_DIR}/repo-list.txt"
+[[ -f "${CONFIG_DIR}/repo-list.txt" ]] || cp "${SCRIPT_DIR}/repo-list.txt.template" "${CONFIG_DIR}/repo-list.txt"
 
 # Clone all repos (exiterr if none found)
 TOTAL_REPOS=0
 CLONED_REPOS=0
-grep "^[^#]" "$CONFIG_DIR/repo-list.txt" | while read -r line; do
+grep "^[^#]" "${CONFIG_DIR}/repo-list.txt" | while read -r line; do
   clone-repo $line
 done
