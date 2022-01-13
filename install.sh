@@ -138,17 +138,14 @@ makesymlink() {
   local symlink_abs_path="${symlink_base_path}${symlink_rel_path}"
 
   local target_rel_path=""
-  local template_rel_path=""
+  local template_abs_path=""
   local create_empty="0"
-  local is_optional="0"
 
   for extra_arg in "${@:2}"; do
     if [[ "${extra_arg}" == "template="* ]]; then
-      template_rel_path="${extra_arg:9}"
+      template_abs_path="${PWD}/${extra_arg:9}"
     elif [[ "${extra_arg}" == "target="* ]]; then
       target_rel_path="${extra_arg:7}"
-    elif [[ "${extra_arg}" == "optional" ]]; then
-      is_optional="1"
     elif [[ "${extra_arg}" == "empty" ]]; then
       create_empty="1"
     else
@@ -162,50 +159,65 @@ makesymlink() {
   fi
   local target_abs_path="${CONFIG_DIR}/${target_rel_path}"
 
-  echo -n "Linking ${symlink_abs_path} to ${target_abs_path}... "
-  return 0
-
+  # First check if there's already a symlink there
   if [[ -L "${symlink_abs_path}" ]]; then
-    if [[ "$(readlink -- "${symlink_abs_path}")" = "${ABS_TARGET}" ]]; then
-      echo "already exists"
-    else
-      echo
-      exiterr "${symlink_abs_path} exists but links to something else"
+    if [[ "$(readlink -- "${symlink_abs_path}")" = "${target_abs_path}" ]]; then
+      # Already exists and is correct
+      return 0
     fi
-  elif [[ -f "${symlink_abs_path}" ]]; then
-    if [[ -f "${target_abs_path}" ]]; then
-      # mv "${}" "${}.bak"
-      # echo "overwriting"
-      exiterr "Regular file already exists at link target"
-    else
-      # Special case when switching from local overrides files to symlinked ones
-      # We'll switch the two files around here
-      mv "${symlink_abs_path}" "${target_abs_path}"
-      ln -s "${target_abs_path}" "${symlink_abs_path}"
-      echo "swapping"
-    fi
-  else # link doesn't exist
-    if [[ -f "${target_abs_path}" ]]; then
-      ln -s "${target_abs_path}" "${symlink_abs_path}"
-      echo "done"
-    elif [[ "${create_empty}" = "1" ]]; then
-      touch "${target_abs_path}"
-      ln -s "${target_abs_path}" "${symlink_abs_path}"
-      echo "done (created empty default)"
-    elif [[ -z "${template_abs_path}" ]]; then
-      if [[ -f "${template_abs_path}" ]]; then
-        cp "${template_abs_path}" "${target_abs_path}"
-        ln -s "${target_abs_path}" "${symlink_abs_path}"
-        echo "done (with default)"
-      else
-        echo
-        exiterr "template file (${template_abs_path}) not found"
-      fi
-    else
-      echo
-      exiterr "Source file not found"
-    fi
+
+    echo
+    exiterr "Link at ${symlink_abs_path} exists but doesn't link to expected location"
   fi
+
+  echo -n "Linking ${symlink_abs_path} to ${target_abs_path}... "
+
+  # Check if there's a file present where the symlink should be
+  if [[ -f "${symlink_abs_path}" ]]; then
+    if [[ -f "${target_abs_path}" ]]; then
+      echo
+      exiterr "Regular file already exists at link target ${target_abs_path}"
+    fi
+
+    # Special case when switching from local overrides files to symlinked ones
+    # We'll switch the two files around here
+    mv "${symlink_abs_path}" "${target_abs_path}"
+    ln -s "${target_abs_path}" "${symlink_abs_path}"
+    echo "done (moved source file)"
+    return 0
+  fi
+
+  # Simplest case, target exists just make the link
+  if [[ -f "${target_abs_path}" ]]; then
+    ln -s "${target_abs_path}" "${symlink_abs_path}"
+    echo "done"
+    return 0
+  fi
+
+  # Check the "create empty" flag and do so if set
+  if [[ "${create_empty}" = "1" ]]; then
+    touch "${target_abs_path}"
+    ln -s "${target_abs_path}" "${symlink_abs_path}"
+    echo "done (created empty default)"
+    return 0
+  fi
+
+  # If there's no template defined, then error out
+  if [[ -z "${template_abs_path}" ]]; then
+    echo
+    exiterr "Source file not found"
+  fi
+
+  # If the template points at a file that doesn't exist, then error out
+  if [[ ! -f "${template_abs_path}" ]]; then
+    echo
+    exiterr "template file (${template_abs_path}) not found"
+  fi
+
+  # Copy the template file
+  cp "${template_abs_path}" "${target_abs_path}"
+  ln -s "${target_abs_path}" "${symlink_abs_path}"
+  echo "done (using template file)"
 }
 
 ###### DONE FUNCTION DEFINITIONS #########
