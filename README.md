@@ -1,8 +1,13 @@
 # GitHub Dev Init
 
-Mission statement
+This script is designed to quickly setup a code directory with repositories hosted on GitHub.
+It ensures that git and the GitHub CLI tools are configured and that basic authorization has been setup.
+You can then declaratively list the repositories to clone and it will ensure that they exist and are configured as expected.
+Those repositories can optionally specify a list of configuration files which should reside outside in an external config directory and be symlinked in.
 
 # Dependencies
+
+This should be usable with minimal dependencies
 
 * macOS or apt-based linux (debian, ubuntu, etc)
 * bash
@@ -10,27 +15,29 @@ Mission statement
 * tar
 * ssh-keygen
 
-# Install
+# Usage
 
-## Step 1: Download Scripts
+## Step 1: Download
 
     mkdir -p ~/.local/share/dev-init && curl -SsL git.io/JSSVe | tar xz --strip-components=1 -C $_
 
-Note: You can pick a different directory than `~/.local/share/dev-init`
+Note: You can use whatever directory you like, you need not store it in `~/.local/share/dev-init`
 
-## Step 2: Install Deps
+## Step 2: Run
 
     ~/.local/share/dev-init/install.sh
 
-This is repeatable
-It may prompt you to fill out additional information in your config directory
-Note: follows the XDG Base Directory Specification for config files and the default config folder can be overridden with the `$XDG_CONFIG_HOME` environment variable.
+The install script is repeatable and idempotent.
+It may prompt you to fill out additional information in your config directory (see below).
 
-## Step 3: Configuration
+# Configuration
 
-Fill in env file
-Provide a repository list
+There are three main files that drive the configuration for the install script.
 
-## Step 4: Now clone stuff
+1. `~/.config/dev-init/github.env`: This contains your authentication credentials and basic configuration
+1. `~/.config/dev-init/repo-list.txt`: This contains a list of repositories to clone (and optionally fork)
+1. `~/.config/dev-init/.dev-init-symlinks.txt` (optional): This contains directives for additional files (probably dotfiles from your home directory) to symlink into `~/.config/dev-init/`
 
-Nah, just use the same install.sh, detect if files are present. prompt for them if not, and use them if so
+See `github.env.template`, `repo-list.txt.template`, and `.dev-init-symlinks.txt.template` in this directory for additional details and examples.
+
+Note: this follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) for config files and the default config folder can be overridden with the `$XDG_CONFIG_HOME` environment variable.
