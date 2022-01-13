@@ -11,7 +11,11 @@
 # If neither template nor empty are specified, then the script will exit if the file doesn't exist
 # If target is specified, it will be the relative path within the config directory to store the file
 # If target is not specified, then a name will be automatically generated based on the relative path to the symlink and the parent directory
+# Note that while file can refer to a directory, you cannot provide "empty" or "template" options in that case
 
 # Examples:
 # .env template=.env.template
 # application/config/flags.php empty target=myrepo-flags.php
+# ~/.ssh target=ssh
+# ~/.gitconfig target=gitconfig
+# ~/.config/composer target=composer-config optional

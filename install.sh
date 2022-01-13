@@ -126,7 +126,7 @@ makesymlink() {
   local symlink_base_path="${PWD}/"
   local symlink_rel_path="${symlink_arg}"
   local default_target_prefix="$( basename "${PWD}" )/"
-  if [[ "${symlink_arg}" = ~/* ]]; then
+  if [[ "${symlink_arg}" = ~\/* ]]; then
     symlink_rel_path="${symlink_arg:2}"
     symlink_base_path="${HOME}/"
     default_target_prefix="home/"
@@ -140,6 +140,7 @@ makesymlink() {
   local target_rel_path=""
   local template_abs_path=""
   local create_empty="0"
+  local is_optional="0"
 
   for extra_arg in "${@:2}"; do
     if [[ "${extra_arg}" == "template="* ]]; then
@@ -148,6 +149,8 @@ makesymlink() {
       target_rel_path="${extra_arg:7}"
     elif [[ "${extra_arg}" == "empty" ]]; then
       create_empty="1"
+    elif [[ "${extra_arg}" == "optional" ]]; then
+      is_optional="1"
     else
       exiterr "Unknown parameter for makesymlink: ${extra_arg}"
     fi
@@ -170,12 +173,9 @@ makesymlink() {
     exiterr "Link at ${symlink_abs_path} exists but doesn't link to expected location"
   fi
 
-  echo -n "Linking ${symlink_abs_path} to ${target_abs_path}... "
-
   # Check if there's a file present where the symlink should be
-  if [[ -f "${symlink_abs_path}" ]]; then
-    if [[ -f "${target_abs_path}" ]]; then
-      echo
+  if [[ -f "${symlink_abs_path}" || -d "${symlink_abs_path}" ]]; then
+    if [[ -f "${target_abs_path}" || -d "${target_abs_path}" ]]; then
       exiterr "Regular file already exists at link target ${target_abs_path}"
     fi
 
@@ -183,14 +183,14 @@ makesymlink() {
     # We'll switch the two files around here
     mv "${symlink_abs_path}" "${target_abs_path}"
     ln -s "${target_abs_path}" "${symlink_abs_path}"
-    echo "done (moved source file)"
+    echo "Linked ${symlink_abs_path} to ${target_abs_path} (moved source file)"
     return 0
   fi
 
   # Simplest case, target exists just make the link
-  if [[ -f "${target_abs_path}" ]]; then
+  if [[ -f "${target_abs_path}" || -d "${target_abs_path}" ]]; then
     ln -s "${target_abs_path}" "${symlink_abs_path}"
-    echo "done"
+    echo "Linked ${symlink_abs_path} to ${target_abs_path}"
     return 0
   fi
 
@@ -198,26 +198,27 @@ makesymlink() {
   if [[ "${create_empty}" = "1" ]]; then
     touch "${target_abs_path}"
     ln -s "${target_abs_path}" "${symlink_abs_path}"
-    echo "done (created empty default)"
+    echo "Linked ${symlink_abs_path} to ${target_abs_path} (created empty default)"
     return 0
   fi
 
   # If there's no template defined, then error out
   if [[ -z "${template_abs_path}" ]]; then
-    echo
-    exiterr "Source file not found"
+    if [[ "${is_optional}" = "1" ]]; then
+      return 0
+    fi
+    exiterr "Source file not found ${symlink_abs_path}"
   fi
 
   # If the template points at a file that doesn't exist, then error out
   if [[ ! -f "${template_abs_path}" ]]; then
-    echo
-    exiterr "template file (${template_abs_path}) not found"
+    exiterr "Template file ${template_abs_path} not found"
   fi
 
   # Copy the template file
   cp "${template_abs_path}" "${target_abs_path}"
   ln -s "${target_abs_path}" "${symlink_abs_path}"
-  echo "done (using template file)"
+  echo "Linked ${symlink_abs_path} to ${target_abs_path} (used template file)"
 }
 
 ###### DONE FUNCTION DEFINITIONS #########
@@ -270,10 +271,12 @@ fi
 # Load in environment vars from config
 source "${CONFIG_FILE}"
 
-# If there's a .dotfiles-links file in your config dir already, ensure that all of those links have been created
+# If there's a .dev-init-symlinks.txt file in your config dir already, ensure that all of those links have been created
 # Note: this is early in the process, so if there are ssh keys or git config in there, it'll be linked first
-if [[ -f "${CONFIG_DIR}/.dotfile-links" ]]; then
-  "${SCRIPT_DIR}/make-symlinks.sh" "${CONFIG_DIR}/.dotfile-links"
+if [[ -f "${CONFIG_DIR}/.dev-init-symlinks.txt" ]]; then
+  # TODO: make sure this works with both absolute paths and with folders
+  cd "${CONFIG_DIR}"
+  makesymlinks
 fi
 
 # Setup repo root directory
