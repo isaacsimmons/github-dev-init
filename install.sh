@@ -54,7 +54,7 @@ ensure-github-auth() {
 }
 
 clone-repo() {
-  local arr_repo_arg=("${1//\// }")
+  local arr_repo_arg=(${1//\// })
   local org_name="${arr_repo_arg[0]}"
   local repo_name="${arr_repo_arg[1]}"
 
@@ -107,7 +107,15 @@ clone-repo() {
   fi
 
   cd "${local_dir}"
-  # TODO: Now do the symlink stuff
+  if [[ -f ".dev-init-symlinks.txt" ]]; then
+    makesymlinks
+  fi
+}
+
+makesymlinks() {
+  grep "^[^#]" ".dev-init-symlinks.txt" | while read -r line; do
+    makesymlink $line
+  done
 }
 
 # Needs to be called from within the repository directory
@@ -115,27 +123,28 @@ clone-repo() {
 makesymlink() {
   local symlink_arg="${1}"
 
-  local symlink_abs_path=""
-  local default_target_prefix=""
-  if [[ "${symlink_arg}" = /* ]]; then
-    symlink_abs_path="${symlink_arg}"
-    default_target_prefix="$( basename "${symlink_arg}" )"
-  elif [[ "${symlink_arg}" = ~* ]]; then
-    symlink_abs_path="${HOME}${symlink_arg:1}"
-    default_target_prefix="home"
-  else
-    symlink_abs_path="${PWD}/${symlink_arg}"
-    defalut_target_prefix="$( basename "${PWD}" )"
+  local symlink_base_path="${PWD}/"
+  local symlink_rel_path="${symlink_arg}"
+  local default_target_prefix="$( basename "${PWD}" )/"
+  if [[ "${symlink_arg}" = ~/* ]]; then
+    symlink_rel_path="${symlink_arg:2}"
+    symlink_base_path="${HOME}/"
+    default_target_prefix="home/"
+  elif [[ "${symlink_arg}" = /* ]]; then
+    symlink_base_path="/"
+    symlink_rel_path="${symlink_arg:1}"
+    default_target_prefix=""
   fi
+  local symlink_abs_path="${symlink_base_path}${symlink_rel_path}"
 
   local target_rel_path=""
-  local =""
+  local template_rel_path=""
   local create_empty="0"
   local is_optional="0"
 
   for extra_arg in "${@:2}"; do
     if [[ "${extra_arg}" == "template="* ]]; then
-      local_dir="${extra_arg:9}"
+      template_rel_path="${extra_arg:9}"
     elif [[ "${extra_arg}" == "target="* ]]; then
       target_rel_path="${extra_arg:7}"
     elif [[ "${extra_arg}" == "optional" ]]; then
@@ -143,16 +152,18 @@ makesymlink() {
     elif [[ "${extra_arg}" == "empty" ]]; then
       create_empty="1"
     else
-      exiterr "Unknown parameter for clone-repo: ${extra_arg}"
+      exiterr "Unknown parameter for makesymlink: ${extra_arg}"
     fi
   done
 
-  if target_rel_path is empty; then
-    generate an automatic target_re_path based on default_target_prefix and symlink_arg
+  # If no target parameter was specified, automatically generate one
+  if [[ -z "${target_rel_path}" ]]; then
+    target_rel_path="$( echo "${default_target_prefix}${symlink_rel_path}" | tr / _ )"
   fi
-  local target_abs_path="${LOCAL_OVERRIDES_DIRECTORY}/${target_rel_path}"
+  local target_abs_path="${CONFIG_DIR}/${target_rel_path}"
 
   echo -n "Linking ${symlink_abs_path} to ${target_abs_path}... "
+  return 0
 
   if [[ -L "${symlink_abs_path}" ]]; then
     if [[ "$(readlink -- "${symlink_abs_path}")" = "${ABS_TARGET}" ]]; then
@@ -196,6 +207,8 @@ makesymlink() {
     fi
   fi
 }
+
+###### DONE FUNCTION DEFINITIONS #########
 
 [[ "${EUID}" -eq 0 ]] && exiterr "Don't run this as root"
 
