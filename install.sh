@@ -126,7 +126,7 @@ makesymlink() {
   local symlink_base_path="${PWD}/"
   local symlink_rel_path="${symlink_arg}"
   local default_target_prefix="$( basename "${PWD}" )/"
-  if [[ "${symlink_arg}" = ~\/* ]]; then
+  if [[ "${symlink_arg}" = "~/"* ]]; then
     symlink_rel_path="${symlink_arg:2}"
     symlink_base_path="${HOME}/"
     default_target_prefix="home/"
@@ -318,9 +318,7 @@ done
 
 [[ -f "${CONFIG_DIR}/repo-list.txt" ]] || cp "${SCRIPT_DIR}/repo-list.txt.template" "${CONFIG_DIR}/repo-list.txt"
 
-# Clone all repos (exiterr if none found)
-TOTAL_REPOS=0
-CLONED_REPOS=0
+# Clone all repos
 grep "^[^#]" "${CONFIG_DIR}/repo-list.txt" | while read -r line; do
   clone-repo $line
 done
