@@ -33,21 +33,21 @@ ensure-github-auth() {
 
   set +e
   gh auth status --hostname "${host}" &> /dev/null
-  GH_AUTH_STATUS="$?"
+  local gh_auth_status="$?"
   set -e
-  if [[ "${GH_AUTH_STATUS}" -ne "0" ]]; then
-    AUTH_TOKEN_NAME="$( github-env-name "${host}" AUTH_TOKEN )"
-    require-env "${AUTH_TOKEN_NAME}"
-    echo "${!AUTH_TOKEN_NAME}" | gh auth login --hostname "${host}" --with-token
+  if [[ "${gh_auth_status}" -ne "0" ]]; then
+    local auth_token_name="$( github-env-name "${host}" AUTH_TOKEN )"
+    require-env "${auth_token_name}"
+    echo "${!auth_token_name}" | gh auth login --hostname "${host}" --with-token
     echo "GH CLI successfully authenticated with ${host}"
   fi
 
   # Push your SSH key if not already present
   set +e
   GH_HOST="${host}" gh ssh-key list | grep -q "${SSH_PUBKEY}"
-  SSH_KEY_PRESENT="$?"
+  local ssh_key_present="$?"
   set -e
-  if [[ "${SSH_KEY_PRESENT}" -ne "0" ]]; then
+  if [[ "${ssh_key_present}" -ne "0" ]]; then
     echo "Uploading SSH public key to ${host}"
     GH_HOST="${host}" gh ssh-key add "${HOME}/.ssh/id_rsa.pub" -t "DevInit-$( uname -n )-$( date +"%Y" )"
   fi
@@ -311,7 +311,7 @@ if [[ "$(gh config get git_protocol)" != "ssh" ]]; then
 fi
 
 # Make sure the GH CLI is authenticated with all defined github hosts
-GITHUB_HOSTS="${GITHUB_HOSTS:-GITHUB}"
+GITHUB_HOSTS="${GITHUB_HOSTS:-github.com}"
 for GITHUB_HOST in ${GITHUB_HOSTS//,/$IFS}; do
   ensure-github-auth "${GITHUB_HOST}"
 done
