@@ -36,8 +36,8 @@ There are three main files that drive the configuration for the install script.
 
 1. `~/.config/dev-init/github.env`: This contains your authentication credentials and basic configuration
 1. `~/.config/dev-init/repo-list.txt`: This contains a list of repositories to clone (and optionally fork)
-1. `~/.config/dev-init/.dev-init-symlinks.txt` (optional): This contains directives for additional files (probably dotfiles from your home directory) to symlink into `~/.config/dev-init/`
+1. `~/.config/dev-init/.configfile-list.txt` (optional): This contains directives for additional files (probably dotfiles from your home directory) to symlink into `~/.config/dev-init/`
 
-See `github.env.template`, `repo-list.txt.template`, and `.dev-init-symlinks.txt.template` in this directory for additional details and examples.
+See `github.env.template`, `repo-list.txt.template`, and `.configfile-list.txt.template` in this directory for additional details and examples.
 
 Note: this follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) for config files and the default config folder can be overridden with the `$XDG_CONFIG_HOME` environment variable.
