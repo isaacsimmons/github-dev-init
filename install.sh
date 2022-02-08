@@ -107,13 +107,13 @@ clone-repo() {
   fi
 
   cd "${local_dir}"
-  if [[ -f ".dev-init-symlinks.txt" ]]; then
+  if [[ -f ".configfile-list.txt" ]]; then
     makesymlinks
   fi
 }
 
 makesymlinks() {
-  grep "^[^#]" ".dev-init-symlinks.txt" | while read -r line; do
+  grep "^[^#]" ".configfile-list.txt" | while read -r line; do
     makesymlink $line
   done
 }
@@ -271,10 +271,9 @@ fi
 # Load in environment vars from config
 source "${CONFIG_FILE}"
 
-# If there's a .dev-init-symlinks.txt file in your config dir already, ensure that all of those links have been created
+# If there's a .configfile-list.txt file in your config dir already, ensure that all of those links have been created
 # Note: this is early in the process, so if there are ssh keys or git config in there, it'll be linked first
-if [[ -f "${CONFIG_DIR}/.dev-init-symlinks.txt" ]]; then
-  # TODO: make sure this works with both absolute paths and with folders
+if [[ -f "${CONFIG_DIR}/.configfile-list.txt" ]]; then
   cd "${CONFIG_DIR}"
   makesymlinks
 fi

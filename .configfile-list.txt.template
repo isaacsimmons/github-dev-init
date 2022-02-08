@@ -1,4 +1,4 @@
-# This is an example for a .dev-init-symlinks.txt file
+# This is an example for a .configfile-list.txt file
 # If any a file with that name is present in the root of a cloned repository or in your CONFIG/dev-init directory
 # it will be processed and symlinks will be created
 
