@@ -36,7 +36,8 @@ ensure-github-auth() {
   local gh_auth_status="$?"
   set -e
   if [[ "${gh_auth_status}" -ne "0" ]]; then
-    local auth_token_name="$( github-env-name "${host}" AUTH_TOKEN )"
+    local auth_token_name
+    auth_token_name="$( github-env-name "${host}" AUTH_TOKEN )"
     require-env "${auth_token_name}"
     echo "${!auth_token_name}" | gh auth login --hostname "${host}" --with-token
     echo "GH CLI successfully authenticated with ${host}"
@@ -63,12 +64,16 @@ clone-repo() {
   local fork="0"
   local origin_org="${org_name}"
   local upstream_org=""
+  local install_script=""
+  # TODO: some way to specify a git branch other than the default?
 
   for extra_arg in "${@:2}"; do
     if [[ "${extra_arg}" == "local-dir="* ]]; then
       local_dir="${extra_arg:10}"
     elif [[ "${extra_arg}" == "host="* ]]; then
       gh_host="${extra_arg:5}"
+    elif [[ "${extra_arg}" == "install-script="* ]]; then
+      install_script="${extra_arg:15}"
     elif [[ "${extra_arg}" == "fork" ]]; then
       fork="1"
     else
@@ -78,7 +83,8 @@ clone-repo() {
 
   if [[ "${fork}" == "1" ]]; then
     upstream_org="${origin_org}"
-    local gh_username_env_var="$( github-env-name "${gh_host}" USERNAME )"
+    local gh_username_env_var
+    gh_username_env_var="$( github-env-name "${gh_host}" USERNAME )"
     origin_org="${!gh_username_env_var}"
   fi
 
@@ -89,11 +95,13 @@ clone-repo() {
   if [[ -d "${local_dir}" ]]; then
     # Ensure that git remotes are set properly
     pushd "${local_dir}" > /dev/null
-    local origin_remote="$(git remote get-url origin)"
+    local origin_remote
+    origin_remote="$(git remote get-url origin)"
     [[ "${origin_remote}" = "${origin_url}" ]] || exiterr "Origin not confgiured correctly in ${local_dir}"
 
     if [[ -n "${upstream_org:-}" ]]; then
-      local upstream_remote="$(git remote get-url upstream)"
+      local upstream_remote
+      upstream_remote="$(git remote get-url upstream)"
       [[ "${upstream_remote}" = "${upstream_url}" ]] || exiterr "Upstream not confgiured correctly in ${local_dir}"
     fi
 
@@ -110,6 +118,10 @@ clone-repo() {
   if [[ -f ".configfile-list.txt" ]]; then
     makesymlinks
   fi
+
+  if [[ -n "${install_script}" ]]; then
+    "./${install_script}"
+  fi
 }
 
 makesymlinks() {
@@ -125,7 +137,8 @@ makesymlink() {
 
   local symlink_base_path="${PWD}/"
   local symlink_rel_path="${symlink_arg}"
-  local default_target_prefix="$( basename "${PWD}" )/"
+  local default_target_prefix
+  default_target_prefix="$( basename "${PWD}" )/"
   if [[ "${symlink_arg}" = "~/"* ]]; then
     symlink_rel_path="${symlink_arg:2}"
     symlink_base_path="${HOME}/"
