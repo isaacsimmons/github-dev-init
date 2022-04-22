@@ -245,6 +245,7 @@ if [[ "${OSTYPE}" == "darwin"* ]]; then
   else
     echo "Intstalling brew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
 fi
 
