@@ -64,7 +64,6 @@ clone-repo() {
   local fork="0"
   local origin_org="${org_name}"
   local upstream_org=""
-  local install_script=""
   # TODO: some way to specify a git branch other than the default?
 
   for extra_arg in "${@:2}"; do
@@ -72,12 +71,8 @@ clone-repo() {
       local_dir="${extra_arg:10}"
     elif [[ "${extra_arg}" == "host="* ]]; then
       gh_host="${extra_arg:5}"
-    elif [[ "${extra_arg}" == "install-script="* ]]; then
-      install_script="${extra_arg:15}"
     elif [[ "${extra_arg}" == "fork" ]]; then
       fork="1"
-    else
-      exiterr "Unknown parameter for clone-repo: ${extra_arg}"
     fi
   done
 
@@ -113,8 +108,24 @@ clone-repo() {
     echo "Cloning from ${origin_url} into ${local_dir}"
     GH_HOST="${gh_host}" gh repo clone "${origin_url}" "${local_dir}"
   fi
+}
 
-  cd "${local_dir}"
+run-repo-setup() {
+  local arr_repo_arg=(${1//\// })
+  local repo_name="${arr_repo_arg[1]}"
+
+  local local_dir="${repo_name}"
+  local install_script=""
+
+  for extra_arg in "${@:2}"; do
+    if [[ "${extra_arg}" == "local-dir="* ]]; then
+      local_dir="${extra_arg:10}"
+    elif [[ "${extra_arg}" == "install-script="* ]]; then
+      install_script="${extra_arg:15}"
+    fi
+  done
+
+  cd "${REPO_ROOT_DIR}/${local_dir}"
   if [[ -f ".configfile-list.txt" ]]; then
     makesymlinks
   fi
@@ -333,4 +344,9 @@ done
 # Clone all repos
 grep "^[^#]" "${CONFIG_DIR}/repo-list.txt" | while read -r line; do
   clone-repo $line
+done
+
+# Setup all repos
+grep "^[^#]" "${CONFIG_DIR}/repo-list.txt" | while read -r line; do
+  run-repo-setup $line
 done
