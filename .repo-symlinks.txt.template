@@ -1,0 +1,19 @@
+# This is an example .configfile-symlinks.txt file
+# It specifies config files that should be stored in an external config directory and symlinked in
+# If a file with that name is present in the root of a cloned repository, it will be processed and symlinks will be created
+
+# Each (non-empty, non-commented-out) line represents a file or folder to be symlinked and has the following format:
+# <file> target=<target> [template=<template> | empty | optional]
+# File is a relative path in the current directory
+# Target is a relative path within the config directory to store the real file
+
+# In the case that the "target" doesn't exist one of the following will be done:
+# 1. If "file" exists, it will be moved there
+# 2. If "empty" is specified, an empty file will be created
+# 3. If "template" is specified and a file exists at that relative path, it will be copied
+# 4. If "optional" is specified, the row will be skipped
+# 5. If none of the above are true, the script will print an error and exit
+
+# Examples:
+# .env target=myrepo-dotenv template=.env.template
+# app/config/flags.php target=myrepo-flags.php empty

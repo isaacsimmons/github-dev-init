@@ -126,8 +126,8 @@ run-repo-setup() {
   done
 
   cd "${REPO_ROOT_DIR}/${local_dir}"
-  if [[ -f ".configfile-list.txt" ]]; then
-    makesymlinks
+  if [[ -f ".repo-symlinks.txt" ]]; then
+    make-symlinks-repo
   fi
 
   if [[ -n "${install_script}" ]]; then
@@ -135,33 +135,30 @@ run-repo-setup() {
   fi
 }
 
-makesymlinks() {
-  grep "^[^#]" ".configfile-list.txt" | while read -r line; do
-    makesymlink $line
+make-symlinks-global() {
+  grep "^[^#]" ".global-symlinks.txt" | while read -r line; do
+    make-symlink-global $line
   done
 }
 
-# Needs to be called from within the repository directory
-# Link points to the target
-makesymlink() {
+make-symlinks-repo() {
+  grep "^[^#]" ".repo-symlinks.txt" | while read -r line; do
+    make-symlink-repo $line
+  done
+}
+
+make-symlink-repo() {
   local symlink_arg="${1}"
-
-  local symlink_base_path="${PWD}/"
   local symlink_rel_path="${symlink_arg}"
-  local default_target_prefix
-  default_target_prefix="$( basename "${PWD}" )/"
-  if [[ "${symlink_arg}" = "~/"* ]]; then
-    symlink_rel_path="${symlink_arg:2}"
-    symlink_base_path="${HOME}/"
-    default_target_prefix="home/"
-  elif [[ "${symlink_arg}" = /* ]]; then
-    symlink_base_path="/"
-    symlink_rel_path="${symlink_arg:1}"
-    default_target_prefix=""
-  fi
-  local symlink_abs_path="${symlink_base_path}${symlink_rel_path}"
 
-  local target_rel_path=""
+  if [[ "${symlink_arg}" = "~/"* ]]; then
+    exiterr "Expected relative file arg for symlink"
+  elif [[ "${symlink_arg}" = /* ]]; then
+    exiterr "Expected relative file arg for symlink"
+  fi
+
+  local symlink_abs_path="${PWD}/${symlink_rel_path}"
+  local target_abs_path=""
   local template_abs_path=""
   local create_empty="0"
   local is_optional="0"
@@ -170,21 +167,77 @@ makesymlink() {
     if [[ "${extra_arg}" == "template="* ]]; then
       template_abs_path="${PWD}/${extra_arg:9}"
     elif [[ "${extra_arg}" == "target="* ]]; then
-      target_rel_path="${extra_arg:7}"
+      target_abs_path="${CONFIG_DIR}/${extra_arg:7}"
     elif [[ "${extra_arg}" == "empty" ]]; then
       create_empty="1"
     elif [[ "${extra_arg}" == "optional" ]]; then
       is_optional="1"
     else
-      exiterr "Unknown parameter for makesymlink: ${extra_arg}"
+      exiterr "Unknown parameter for make-symlink-repo: ${extra_arg}"
     fi
   done
 
   # If no target parameter was specified, automatically generate one
-  if [[ -z "${target_rel_path}" ]]; then
-    target_rel_path="$( echo "${default_target_prefix}${symlink_rel_path}" | tr / _ )"
+  if [[ -z "${target_abs_path}" ]]; then
+    exiterr "Missing required target= parameter"
   fi
-  local target_abs_path="${CONFIG_DIR}/${target_rel_path}"
+
+  make-symlink "${symlink_abs_path}" "${target_abs_path}" "${template_abs_path}" "${create_empty}" "${is_optional}"
+}
+
+make-symlink-global() {
+  local symlink_arg="${1}"
+
+  local symlink_base_path="${PWD}/"
+  local symlink_rel_path="${symlink_arg}"
+
+  if [[ "${symlink_arg}" = "~/"* ]]; then
+    symlink_rel_path="${symlink_arg:2}"
+    symlink_base_path="${HOME}/"
+  elif [[ "${symlink_arg}" = /* ]]; then
+    symlink_base_path="/"
+    symlink_rel_path="${symlink_arg:1}"
+  else
+    exiterr "Expected absolute file arg for symlink"
+  fi
+
+  local symlink_abs_path="${symlink_base_path}${symlink_rel_path}"
+
+  local target_abs_path=""
+  local template_abs_path=""
+  local create_empty="0"
+  local is_optional="0"
+
+  for extra_arg in "${@:2}"; do
+    if [[ "${extra_arg}" == "template="* ]]; then
+      template_abs_path="${PWD}/${extra_arg:9}"
+    elif [[ "${extra_arg}" == "target="* ]]; then
+      target_abs_path="${CONFIG_DIR}/${extra_arg:7}"
+    elif [[ "${extra_arg}" == "empty" ]]; then
+      create_empty="1"
+    elif [[ "${extra_arg}" == "optional" ]]; then
+      is_optional="1"
+    else
+      exiterr "Unknown parameter for make-symlink-abs: ${extra_arg}"
+    fi
+  done
+
+  # If no target parameter was specified, automatically generate one
+  if [[ -z "${target_abs_path}" ]]; then
+    exiterr "Missing required target= parameter"
+  fi
+
+  make-symlink "${symlink_abs_path}" "${target_abs_path}" "${template_abs_path}" "${create_empty}" "${is_optional}"
+}
+
+# Needs to be called from within the repository directory
+# Link points to the target
+make-symlink() {
+  local symlink_abs_path="${1}"
+  local target_abs_path="${2}"
+  local template_abs_path="${3}"
+  local create_empty="${4}"
+  local is_optional="${5}"
 
   # First check if there's already a symlink there
   if [[ -L "${symlink_abs_path}" ]]; then
@@ -296,11 +349,11 @@ fi
 # Load in environment vars from config
 source "${CONFIG_FILE}"
 
-# If there's a .configfile-list.txt file in your config dir already, ensure that all of those links have been created
+# If there's a .global-symlinks.txt file in your config dir already, ensure that all of those links have been created
 # Note: this is early in the process, so if there are ssh keys or git config in there, it'll be linked first
-if [[ -f "${CONFIG_DIR}/.configfile-list.txt" ]]; then
+if [[ -f "${CONFIG_DIR}/.global-symlinks.txt" ]]; then
   cd "${CONFIG_DIR}"
-  makesymlinks
+  make-symlinks-global
 fi
 
 # Setup repo root directory
