@@ -1,4 +1,4 @@
-# This is an example .configfile-symlinks.txt file
+# This is an example .repo-symlinks.txt file
 # It specifies config files that should be stored in an external config directory and symlinked in
 # If a file with that name is present in the root of a cloned repository, it will be processed and symlinks will be created
 
