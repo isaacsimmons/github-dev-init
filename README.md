@@ -19,7 +19,7 @@ This should be usable with minimal dependencies
 
 ## Step 1: Download
 
-    mkdir -p ~/.local/share/dev-init && curl -SsL git.io/JSSVe | tar xz --strip-components=1 -C $_
+    mkdir -p ~/.local/share/dev-init && curl -SsL https://api.github.com/repos/isaacsimmons/github-dev-init/tarball/main | tar xz --strip-components=1 -C ~/.local/share/dev-init
 
 Optional: symlink this somewhere on your path
 
