@@ -8,7 +8,6 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/dev-init"
 CONFIG_FILE="${CONFIG_DIR}/github.env"
-echo "Using config in ${CONFIG_DIR}/"
 
 # Define some helper functions
 exiterr() {
@@ -175,6 +174,7 @@ fi
 [[ -f "${CONFIG_FILE}" ]] || cp "${SCRIPT_DIR}/github.env.template" "${CONFIG_FILE}"
 
 # Load in environment vars from config
+echo "Using config in ${CONFIG_DIR}/"
 source "${CONFIG_FILE}"
 
 # Setup repo root directory
