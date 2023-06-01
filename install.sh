@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-#TODO: apply consistent style guide (Google Shell Styleguide, ShellCheck, etc)
-
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/dev-init"
