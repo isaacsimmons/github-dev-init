@@ -137,20 +137,17 @@ run-repo-setup() {
 
 # Ensure dependencies are installed
 if [[ "${OSTYPE}" == "darwin"* ]]; then
-  if command -v brew &> /dev/null; then
-    echo "Brew installed"
-  else
+  if ! command -v brew &> /dev/null; then
     echo "Intstalling brew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
 fi
 
-if command -v git &> /dev/null; then
-  echo "Git installed"
-else
+if ! command -v git &> /dev/null; then
   echo "Installing git..."
   if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
+    # TODO: non-apt
     sudo apt install git
   elif [[ "${OSTYPE}" == "darwin"* ]]; then
     brew install git
@@ -159,9 +156,7 @@ else
   fi
 fi
 
-if command -v gh &> /dev/null; then
-  echo "GH CLI installed"
-else
+if ! command -v gh &> /dev/null; then
   echo "Intstalling GH CLI tools..."
   if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
@@ -171,7 +166,7 @@ else
   elif [[ "${OSTYPE}" == "darwin"* ]]; then
     brew install gh
   else
-    exiterr "Unsupported OSTYPE ${OSTYPE}"
+    exiterr "Missing dependency. Install GH command line tools"
   fi
 fi
 
@@ -181,8 +176,6 @@ fi
 
 # Load in environment vars from config
 source "${CONFIG_FILE}"
-
-# TODO: first pass chezmoi? might be able to populate ssh keys and git config here
 
 # Setup repo root directory
 REPO_ROOT_DIR="${REPO_ROOT_DIR:-${HOME}/code}"
