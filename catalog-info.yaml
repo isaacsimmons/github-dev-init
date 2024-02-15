@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: github-dev-init
+  annotations:
+    github.com/project-slug: isaacsimmons/github-dev-init
+spec:
+  type: other
+  lifecycle: unknown
+  owner: isaac.simmons
