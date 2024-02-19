@@ -29,6 +29,9 @@ You can also clone the repo instead of using the one-liner install.
 
 ## Step 2: Run
 
+> [!NOTE]
+> You should ensure the master branches on the forks you're going to clone (see `github.env` below) are up to date.
+
     ~/.local/share/dev-init/install.sh
 
 or, if you followed the optional symlink step you need only type
